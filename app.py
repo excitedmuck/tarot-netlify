@@ -2,10 +2,11 @@ import streamlit as st
 import random
 import openai
 from datetime import datetime
+import os
 
 # Set up OpenAI client
-
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+# Get the OpenAI API key from the Replit environment
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Tarot Deck (Major Arcana and Minor Arcana)
 tarot_deck = [
