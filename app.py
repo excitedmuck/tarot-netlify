@@ -4,10 +4,19 @@ import openai
 from datetime import datetime
 import os
 
+from fastapi import FastAPI
+import os
+
+app = FastAPI()
+
+@app.get("/")
+async def run_streamlit():
+    os.system("streamlit run app.py --server.port 8000 --server.headless true")
+    return {"message": "Streamlit app is running"}
+
 # Set up OpenAI client
 # Get the OpenAI API key from the Replit environment
 openai.api_key = os.getenv("OPENAI_API_KEY")
-openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # Tarot Deck (Major Arcana and Minor Arcana)
 tarot_deck = [
