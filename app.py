@@ -29,7 +29,7 @@ st.title("✨ Mystical Tarot de Multiverse ✨")
 
 # Sidebar for PayPal``
 st.sidebar.title("Support the Creator")
-st.sidebar.write("Hey there! I'm a PhD student in Geospatial Sciences, passionate about creating helpful apps like this one.")
+st.sidebar.write("Hey there! I'm a PhD student in Geospatial Sciences, passionate about getting answers from the unconscious.")
 st.sidebar.write("I'm trying to raise 1200 pounds for my living expenses. If this app has helped you in any way, please consider supporting me!")
 st.sidebar.markdown("[💰 Donate via PayPal](https://paypal.me/yashvinis?country.x=GB&locale.x=en_GB)")
 st.sidebar.write("Your support means the world to me and helps me continue developing useful tools. Thank you! 🙏")
@@ -132,7 +132,7 @@ if st.button(f"🌟 Unveil the {spread_type} 🌟"):
         st.markdown(f"***\n*{random.choice(quotes)}*")
 
         # Reminder to support
-        st.info("If you found this reading helpful, please consider supporting the creator through the PayPal link in the sidebar. Your contribution helps keep the cosmic energies flowing! ✨")
+        st.info("If you found this reading helpful, let me know on yashvinis@hotmail.com. Your support helps keep the cosmic energies flowing! ✨")
 
     else:
         st.warning("🌙 Please whisper your question to the universe before seeking its wisdom.")
