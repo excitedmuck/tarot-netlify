@@ -7,6 +7,7 @@ import os
 # Set up OpenAI client
 # Get the OpenAI API key from the Replit environment
 openai.api_key = os.getenv("OPENAI_API_KEY")
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # Tarot Deck (Major Arcana and Minor Arcana)
 tarot_deck = [
