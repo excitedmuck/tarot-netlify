@@ -8,6 +8,7 @@ import os
 # Get the OpenAI API key from the Replit environment
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+
 # Tarot Deck (Major Arcana and Minor Arcana)
 tarot_deck = [
     "The Fool", "The Magician", "The High Priestess", "The Empress", "The Emperor",
@@ -30,10 +31,11 @@ st.title("✨ Mystical Tarot de Multiverse ✨")
 
 # Sidebar for PayPal``
 st.sidebar.title("Support the Creator")
-st.sidebar.write("Hey there! I'm a PhD student in Geospatial Sciences, passionate about getting answers from the unconscious.")
-st.sidebar.write("I'm trying to raise 1200 pounds for my living expenses. If this app has helped you in any way, please consider supporting me!")
-st.sidebar.markdown("[💰 Donate via PayPal](https://paypal.me/yashvinis?country.x=GB&locale.x=en_GB)")
-st.sidebar.write("Your support means the world to me and helps me continue developing useful tools. Thank you! 🙏")
+st.sidebar.write("I'm a free bird in autopoeisis poetry of code and word, I'm passionate about earth observation in deed and word, I like helping you get answers truly absurd.")
+st.sidebar.write("I'm trying to raise butterfly wings for my cacoon. If this app has helped you in any way, buy me a molly and give me a hug!")
+st.sidebar.markdown("[Bestow Me a Molly](https://buymeacoffee.com/yashvinishz)")
+st.sidebar.write("Your love means the world to me. So may you never run out of molly! 🥰😉")
+
 
 # Get the user's question
 question = st.text_input("🔮 Whisper your question to the cosmos...")
@@ -103,7 +105,7 @@ if st.button(f"🌟 Unveil the {spread_type} 🌟"):
         
         # Prepare the prompt for OpenAI
         spread_description = '\n'.join([f"{spread_positions[i]}: {spread[i]}" for i in range(len(spread))])
-        prompt = f"As a mystical sage, interpret this {spread_type} tarot spread:\n{spread_description}\n\nCosmic Question: {question}\n\nWeave a tapestry of wisdom, revealing the hidden threads of fate and the whispers of the universe in your interpretation. Include specific card meanings and their interactions."
+        prompt = f"As a mystical sage, interpret this {spread_type} tarot spread:\n{spread_description}\n\nCosmic Question: {question}\n\nWeave a tapestry of wisdom, revealing the hidden threads of fate and the whispers of the universe in your interpretation. Include specific card meanings and their interactions, make the response as specific and personalised as possible and directly answer the question. Always end in a punny note."
 
         # Get a response from OpenAI
         with st.spinner("The cosmic energies are aligning to reveal your destiny..."):
@@ -133,7 +135,7 @@ if st.button(f"🌟 Unveil the {spread_type} 🌟"):
         st.markdown(f"***\n*{random.choice(quotes)}*")
 
         # Reminder to support
-        st.info("If you found this reading helpful, let me know on yashvinis@hotmail.com. Your support helps keep the cosmic energies flowing! ✨")
+        st.info("If you found this reading helpful, slip to the left panel and you might see molly 🥰, or be my x @cacooleed and hear my folly 😉🦜.")
 
     else:
         st.warning("🌙 Please whisper your question to the universe before seeking its wisdom.")
