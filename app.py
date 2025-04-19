@@ -4,10 +4,14 @@ import openai
 from datetime import datetime
 import os
 
+st.set_page_config(
+    page_title="Free Tarot Readings | Mystical Tarot de Multiverse",
+    page_icon="🔮",
+    layout="wide"
+)
 # Set up OpenAI client
 # Get the OpenAI API key from the Replit environment
 openai.api_key = os.getenv("OPENAI_API_KEY")
-
 
 # Tarot Deck (Major Arcana and Minor Arcana)
 tarot_deck = [
@@ -26,19 +30,20 @@ for suit in suits:
     for rank in ranks:
         tarot_deck.append(f"{rank} of {suit}")
 
-# Streamlit app
-st.title("✨ Mystical Tarot de Multiverse ✨")
+# Streamlit app with SEO improvements
+# Suggested meta description for static deployment: "Discover free tarot readings with mystical insights at The Free Tarot. Explore your destiny with cosmic spreads!"
+st.markdown("# ✨ Mystical Tarot de Multiverse - Free Tarot Readings ✨")  # H1 tag for SEO
 
-# Sidebar for PayPal``
-st.sidebar.title("Support the Creator")
+# Sidebar for PayPal
+st.sidebar.markdown("## Support the Creator")  # H2 tag for section
 st.sidebar.write("I'm a free bird in autopoeisis poetry of code and word, I'm passionate about earth observation in deed and word, I like helping you get answers truly absurd.")
 st.sidebar.write("I'm trying to raise butterfly wings for my cacoon. If this app has helped you in any way, buy me a molly and give me a hug!")
 st.sidebar.markdown("[Bestow Me a Molly](https://buymeacoffee.com/yashvinishz)")
 st.sidebar.write("Your love means the world to me. So may you never run out of molly! 🥰😉")
 
-
 # Get the user's question
-question = st.text_input("🔮 Whisper your question to the cosmos...")
+st.markdown("## 🔮 Whisper Your Question to the Cosmos for a Tarot Reading")  # H2 tag with keywords
+question = st.text_input("Ask about love, career, or your cosmic path...")
 
 # Define spread types with images
 spread_types = {
@@ -71,14 +76,15 @@ spread_types = {
             "Fire (Passion and Energy)",
             "Water (Emotions and Intuition)",
             "Air (Thoughts and Communication)",
-            "Earth (Material and Practical Matters)",
+            "Earth гимнаMaterial and Practical Matters)",
             "Spirit (Higher Purpose and Connection)"
         ],
     }
 }
 
 # Let the user choose the spread type
-spread_type = st.selectbox("Choose your cosmic spread:", list(spread_types.keys()))
+st.markdown("## Choose Your Cosmic Spread for Mystical Insights")  # H2 tag with keywords
+spread_type = st.selectbox("Select a spread to unveil your destiny:", list(spread_types.keys()))
 
 if st.button(f"🌟 Unveil the {spread_type} 🌟"):
     if question:
@@ -117,8 +123,7 @@ if st.button(f"🌟 Unveil the {spread_type} 🌟"):
             )
 
         # Print the interpretation
-        st.subheader("🌌 Cosmic Interpretation 🌌")
-
+        st.markdown("## 🌌 Cosmic Interpretation of Your Tarot Spread 🌌")  # H2 tag with keywords
         interpretation = response.choices[0].message.content.strip()
         paragraphs = interpretation.split('\n\n')
         for paragraph in paragraphs:
@@ -140,8 +145,7 @@ if st.button(f"🌟 Unveil the {spread_type} 🌟"):
     else:
         st.warning("🌙 Please whisper your question to the universe before seeking its wisdom.")
 
-
-# {{INSERTED_CODE}}
+# Additional section with internal and external links
 st.markdown("## The Legitimacy of Tarot: A Psychological Perspective")
 st.write("""
 Tarot cards have long been revered as more than mere tools of divination; they are profound instruments for introspection and self-discovery. Drawing upon the depth psychology of Carl Jung, tarot embodies the archetypal symbols that reside within the collective unconscious, mirroring the universal themes and inner conflicts that define the human experience.
@@ -154,3 +158,7 @@ Moreover, the structured yet flexible nature of tarot spreads provides a framewo
 
 In essence, the legitimacy of tarot is anchored in its ability to resonate with the fundamental aspects of human psychology. By integrating Jungian archetypes and psychoanalytic principles, tarot offers a meaningful and transformative avenue for individuals to explore their inner worlds and cultivate a more profound connection with their authentic selves.
 """)
+st.markdown("[Learn More About Tarot's Psychological Roots](/about-tarot)")  # Internal link
+st.markdown("[Explore Jungian Archetypes in Tarot](https://labyrinthos.co/blogs/learn-tarot-with-labyrinthos-academy/carl-jung-and-jungian-archetypes-in-the-tarot-the-various-aspects-of-our-selves?srsltid=AfmBOoqgyY0Ur-zwvlAWvccRlt_06NbCCfP_1okEg-2r6NONgtCGb3Mf)")  # External link to a reputable source
+
+
