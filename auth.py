@@ -11,20 +11,29 @@ _AUTH_URL     = "https://accounts.google.com/o/oauth2/v2/auth"
 _TOKEN_URL    = "https://oauth2.googleapis.com/token"
 _USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
 
+# Base scopes for standard login
+_BASE_SCOPES  = "openid email profile"
+# Extended scopes for Gmail pattern analysis
+_GMAIL_SCOPES = "openid email profile https://www.googleapis.com/auth/gmail.readonly"
+
 
 def is_configured() -> bool:
     return bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET)
 
 
-def get_auth_url() -> str:
+def get_auth_url(gmail_scope: bool = False) -> str:
+    scope = _GMAIL_SCOPES if gmail_scope else _BASE_SCOPES
     params = {
         "client_id":     GOOGLE_CLIENT_ID,
         "redirect_uri":  REDIRECT_URI,
         "response_type": "code",
-        "scope":         "openid email profile",
+        "scope":         scope,
         "access_type":   "offline",
         "prompt":        "select_account",
     }
+    if gmail_scope:
+        # Force re-consent to get Gmail scope
+        params["prompt"] = "consent"
     return f"{_AUTH_URL}?{urlencode(params)}"
 
 

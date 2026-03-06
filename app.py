@@ -9,6 +9,11 @@ import json
 
 import auth
 import database
+import iching as ic
+import seo as SEO
+import ab_testing
+import gmail_integration
+import social_integration
 
 st.set_page_config(
     page_title="Mystical Tarot de Multiverse | Free Tarot & Numerology Readings",
@@ -18,10 +23,17 @@ st.set_page_config(
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# ── DB init + OAuth callback ──────────────────────────────────────────────────
+# ── DB init + A/B tables + OAuth callback ────────────────────────────────────
 database.init_db()
+ab_testing.init_ab_tables()
 
+# ── A/B variant assignment ────────────────────────────────────────────────────
 _params = st.query_params
+_ab_variant = ab_testing.get_or_assign_variant(st.session_state, _params)
+_copy = SEO.AB_VARIANTS[_ab_variant]
+ab_testing.log_impression(st.session_state)
+
+# ── OAuth callback ────────────────────────────────────────────────────────────
 if "code" in _params and "user" not in st.session_state:
     try:
         _tokens    = auth.exchange_code(_params["code"])
@@ -30,7 +42,13 @@ if "code" in _params and "user" not in st.session_state:
             _info["sub"], _info.get("email", ""),
             _info.get("name", ""), _info.get("picture", ""),
         )
-        st.session_state["user"] = {**_info, "db_id": _db_id}
+        _tokens_copy = _tokens.copy()
+        st.session_state["user"] = {
+            **_info,
+            "db_id": _db_id,
+            "access_token": _tokens_copy.get("access_token", ""),
+            "gmail_scope": "gmail" in _tokens_copy.get("scope", ""),
+        }
         st.query_params.clear()
         st.rerun()
     except Exception as _e:
@@ -300,6 +318,8 @@ hr { border: none !important; border-top: 1px solid var(--border) !important; ma
     text-transform: uppercase; padding: 3px 9px; border-radius: 20px; }
 .j-type.tarot { background: rgba(184,158,196,0.15); color: var(--lavender); border: 1px solid rgba(184,158,196,0.3); }
 .j-type.numerology { background: rgba(201,169,110,0.12); color: var(--gold); border: 1px solid rgba(201,169,110,0.25); }
+.j-type.iching { background: rgba(126,196,204,0.12); color: var(--arctic); border: 1px solid rgba(126,196,204,0.28); }
+.j-entry.iching::before { background: linear-gradient(180deg, #7ec4cc, #b89ec4); }
 .j-date { font-family: 'Space Grotesk', sans-serif; font-size: 0.7rem; color: var(--muted); }
 .j-question { font-family: 'Crimson Pro', serif; font-size: 1.05rem; font-style: italic;
     color: var(--parchment); margin: 0 0 6px; }
@@ -323,8 +343,55 @@ hr { border: none !important; border-top: 1px solid var(--border) !important; ma
     color: var(--parchment); margin: 0; white-space: pre-wrap; }
 .insight-meta { font-family: 'Space Grotesk', sans-serif; font-size: 0.68rem;
     color: var(--muted); margin-top: 14px; }
+
+/* ── I Ching ── */
+.iching-card {
+    background: linear-gradient(160deg, rgba(24,45,74,0.97), rgba(14,27,46,1));
+    border: 1px solid rgba(126,196,204,0.3);
+    border-radius: 10px;
+    padding: 20px 16px;
+    text-align: center;
+    transition: border-color 0.25s, box-shadow 0.25s;
+}
+.iching-card:hover { border-color: rgba(126,196,204,0.55); box-shadow: 0 4px 28px rgba(126,196,204,0.08); }
+.iching-number { font-family: 'Space Grotesk', sans-serif; font-size: 0.62rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin: 0 0 4px; }
+.iching-chinese { font-size: 2.4rem; color: var(--arctic); margin: 0; line-height: 1; text-shadow: 0 0 20px rgba(126,196,204,0.3); }
+.iching-english { font-family: 'Cinzel Decorative', serif; font-size: 0.7rem; color: var(--gold); margin: 6px 0 4px; letter-spacing: 0.06em; }
+.iching-trigrams { font-size: 0.9rem; color: var(--lavender); margin: 0 0 10px; letter-spacing: 0.2em; }
+.iching-judgment { font-family: 'Crimson Pro', serif; font-size: 0.95rem; color: var(--parchment); line-height: 1.65; margin: 0; }
+.iching-image { font-family: 'Crimson Pro', serif; font-size: 0.88rem; color: #8a9aac; font-style: italic; line-height: 1.55; margin: 8px 0 0; }
+.changing-line { font-size: 0.65rem; color: var(--terra); font-family: 'Space Grotesk', sans-serif; letter-spacing: 0.1em; text-transform: uppercase; }
+
+/* ── Social / Gmail Integration ── */
+.social-card {
+    background: linear-gradient(135deg, rgba(24,45,74,0.8), rgba(18,32,58,0.9));
+    border: 1px solid rgba(126,196,204,0.2);
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin-bottom: 12px;
+}
+.social-badge {
+    display: inline-block;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.62rem;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 20px;
+    margin-bottom: 8px;
+}
+.social-badge.gmail { background: rgba(234,67,53,0.15); color: #ea4335; border: 1px solid rgba(234,67,53,0.3); }
+.social-badge.facebook { background: rgba(24,119,242,0.15); color: #1877f2; border: 1px solid rgba(24,119,242,0.3); }
+.social-badge.manual { background: rgba(138,170,124,0.15); color: var(--sage); border: 1px solid rgba(138,170,124,0.3); }
+
+/* ── AB variant badge (dev only) ── */
+.ab-badge { position: fixed; bottom: 8px; right: 12px; font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.55rem; color: #2d4a5a; letter-spacing: 0.08em; }
 </style>
 """, unsafe_allow_html=True)
+
+# ── SEO meta injection ─────────────────────────────────────────────────────────
+st.markdown(SEO.get_meta_html(), unsafe_allow_html=True)
 
 
 # ── SVG utilities ─────────────────────────────────────────────────────────────
@@ -710,11 +777,11 @@ def calculate_name_numbers(name: str):
 # ── Header ────────────────────────────────────────────────────────────────────
 
 st.markdown(f'<div style="margin-bottom:-12px">{header_svg()}</div>', unsafe_allow_html=True)
-st.markdown("# Mystical Tarot de Multiverse")
+st.markdown(f"# {_copy['hero_headline']}")
 st.markdown(
-    '<p style="color:#6a8a9a;font-family:\'Space Grotesk\',sans-serif;font-size:0.8rem;'
-    'letter-spacing:0.15em;text-transform:uppercase;margin-top:-8px;margin-bottom:24px;">'
-    'Free Tarot &nbsp;·&nbsp; Numerology &nbsp;·&nbsp; Cosmic Readings</p>',
+    f'<p style="color:#6a8a9a;font-family:\'Space Grotesk\',sans-serif;font-size:0.8rem;'
+    f'letter-spacing:0.15em;text-transform:uppercase;margin-top:-8px;margin-bottom:24px;">'
+    f'{_copy["hero_subtitle"]}</p>',
     unsafe_allow_html=True,
 )
 
@@ -788,8 +855,8 @@ st.sidebar.markdown(
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
 
-tarot_tab, numerology_tab, journal_tab, wisdom_tab = st.tabs([
-    "✦ Tarot Reading", "✦ Numerology", "✦ My Journal", "✦ Ancient Wisdom"
+tarot_tab, numerology_tab, iching_tab, journal_tab, wisdom_tab = st.tabs([
+    "✦ Tarot Reading", "✦ Numerology", "✦ I Ching", "✦ My Journal", "✦ Ancient Wisdom"
 ])
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -821,7 +888,7 @@ with tarot_tab:
 
     st.markdown(f'<div style="margin:20px 0 8px">{ornament_svg()}</div>', unsafe_allow_html=True)
 
-    if st.button(f"Unveil the {spread_type}"):
+    if st.button(_copy["tarot_cta"].format(spread=spread_type)):
         if not question:
             st.warning("Please whisper your question to the universe before seeking its wisdom.")
         else:
@@ -889,6 +956,7 @@ with tarot_tab:
                     st.session_state["user"]["db_id"],
                     "tarot", question, spread_type, spread, interpretation,
                 )
+            ab_testing.log_conversion(st.session_state, "tarot_reading_completed")
 
             st.markdown(
                 f'<p style="text-align:center;font-style:italic;color:#4a6a7a;'
@@ -929,7 +997,7 @@ with numerology_tab:
 
     st.markdown(f'<div style="margin:20px 0 8px">{ornament_svg()}</div>', unsafe_allow_html=True)
 
-    if st.button("Reveal My Numbers"):
+    if st.button(_copy["numerology_cta"]):
         if not birth_date and not (full_name and full_name.strip()):
             st.warning("Please enter your birth date or full name to begin your reading.")
         else:
@@ -1036,8 +1104,217 @@ with numerology_tab:
                     num_interp,
                     _num_meta,
                 )
+            ab_testing.log_conversion(st.session_state, "numerology_reading_completed")
 
             st.info("Found this reading helpful? Slip to the sidebar — molly awaits. 🥰")
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# I CHING TAB
+# ════════════════════════════════════════════════════════════════════════════
+with iching_tab:
+    st.markdown(
+        '<p style="color:#8a9aac;font-size:1.05rem;max-width:660px;margin-bottom:28px;">'
+        'The I Ching — Book of Changes — is a 3,000-year-old Chinese oracle of 64 hexagrams. '
+        'Each hexagram speaks to the dynamic interplay of yin and yang, revealing the deeper pattern '
+        'beneath your question. Cast three coins six times, or let the cosmos decide.</p>',
+        unsafe_allow_html=True,
+    )
+
+    col_ic_q, col_ic_b = st.columns([3, 2], gap="large")
+    with col_ic_q:
+        st.markdown("## Your Question for the Oracle")
+        ic_question = st.text_input(
+            "I Ching question",
+            placeholder="What should I understand about this situation…",
+            label_visibility="collapsed",
+            key="ic_question",
+        )
+    with col_ic_b:
+        st.markdown("## Cast Method")
+        ic_method = st.selectbox(
+            "Casting method",
+            ["Three-Coin Method", "Single Hexagram (Direct)"],
+            label_visibility="collapsed",
+            key="ic_method",
+        )
+
+    st.markdown(f'<div style="margin:20px 0 8px">{ornament_svg()}</div>', unsafe_allow_html=True)
+
+    if st.button(_copy["iching_cta"], key="cast_iching"):
+        if not ic_question:
+            st.warning("Please frame your question before consulting the oracle.")
+        else:
+            with st.spinner("The yarrow stalks are falling… the oracle speaks…"):
+                cast_result = ic.cast_hexagram()
+                hexagram = cast_result["hexagram"]
+                changing = cast_result["changing"]
+                relating = cast_result.get("relating_hexagram")
+
+            # Display primary hexagram
+            st.markdown(
+                f'<p style="color:#6a8a9a;font-family:\'Space Grotesk\',sans-serif;'
+                f'font-size:0.78rem;letter-spacing:0.1em;text-transform:uppercase;'
+                f'margin-bottom:4px;">Your Question</p>'
+                f'<p style="font-size:1.15rem;color:#e8dcc8;font-style:italic;'
+                f'margin-bottom:28px;">&ldquo;{ic_question}&rdquo;</p>',
+                unsafe_allow_html=True,
+            )
+
+            st.markdown("## The Oracle's Response")
+            ic_col1, ic_col2 = st.columns([1, 2], gap="large")
+
+            with ic_col1:
+                hex_svg = ic.hexagram_svg(cast_result["lines"], changing)
+                st.markdown(
+                    f'<div class="iching-card">'
+                    f'<p class="iching-number">Hexagram {hexagram["number"]}</p>'
+                    f'{hex_svg}'
+                    f'<p class="iching-chinese">{hexagram["chinese"]}</p>'
+                    f'<p class="iching-english">{hexagram["english"]}</p>'
+                    f'<p class="iching-trigrams">'
+                    f'{hexagram["lower_symbol"]} {hexagram["lower_trigram"]} &nbsp;·&nbsp; '
+                    f'{hexagram["upper_symbol"]} {hexagram["upper_trigram"]}</p>'
+                    + (f'<p class="changing-line">✦ {len(changing)} changing line{"s" if len(changing)!=1 else ""}</p>' if changing else "")
+                    + f'</div>',
+                    unsafe_allow_html=True,
+                )
+
+                if relating:
+                    st.markdown(
+                        f'<div style="margin-top:12px;">'
+                        f'<p style="font-family:\'Space Grotesk\',sans-serif;font-size:0.62rem;'
+                        f'color:#4a6a7a;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;">Relating Hexagram</p>'
+                        f'<div class="iching-card">'
+                        f'<p class="iching-number">Hexagram {relating["number"]}</p>'
+                        + ic.hexagram_svg(relating["lines"])
+                        + f'<p class="iching-chinese">{relating["chinese"]}</p>'
+                        f'<p class="iching-english">{relating["english"]}</p>'
+                        f'</div></div>',
+                        unsafe_allow_html=True,
+                    )
+
+            with ic_col2:
+                st.markdown(
+                    f'<div class="iching-card" style="text-align:left;">'
+                    f'<p class="iching-number">The Judgment</p>'
+                    f'<p class="iching-judgment">{hexagram["judgment"]}</p>'
+                    f'<p style="height:1px;background:rgba(201,169,110,0.15);margin:14px 0;"></p>'
+                    f'<p class="iching-number">The Image</p>'
+                    f'<p class="iching-image">{hexagram["image"]}</p>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+
+                if relating:
+                    st.markdown(
+                        f'<div class="iching-card" style="text-align:left;margin-top:10px;">'
+                        f'<p class="iching-number">Relating Hexagram — {relating["english"]}</p>'
+                        f'<p class="iching-judgment">{relating["judgment"]}</p>'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
+
+            # AI Interpretation
+            st.markdown(f'<div style="margin:28px 0 8px">{ornament_svg()}</div>', unsafe_allow_html=True)
+            st.markdown("## Oracle's Cosmic Interpretation")
+
+            ic_cards_desc = (
+                f"Primary Hexagram {hexagram['number']}: {hexagram['chinese']} — {hexagram['english']}\n"
+                f"Judgment: {hexagram['judgment']}\n"
+                f"Image: {hexagram['image']}\n"
+                f"Lower Trigram: {hexagram['lower_trigram']}, Upper Trigram: {hexagram['upper_trigram']}"
+            )
+            if relating:
+                ic_cards_desc += (
+                    f"\n\nRelating Hexagram {relating['number']}: {relating['chinese']} — {relating['english']}\n"
+                    f"Judgment: {relating['judgment']}"
+                )
+            if changing:
+                ic_cards_desc += f"\n\nChanging lines at positions: {[c+1 for c in changing]}"
+
+            ic_prompt = (
+                "You are a wise I Ching sage with deep knowledge of Taoist philosophy and the Book of Changes. "
+                f"The seeker asks: '{ic_question}'\n\n"
+                f"The oracle has revealed:\n{ic_cards_desc}\n\n"
+                "Provide a warm, insightful interpretation that:\n"
+                "1. Addresses the seeker's specific question\n"
+                "2. Explains the core message of the hexagram(s) in practical, accessible terms\n"
+                "3. Speaks to the dynamic between yin and yang energies at play\n"
+                "4. If there are changing lines or a relating hexagram, explains the transformation suggested\n"
+                "5. Offers a clear path forward or key insight\n"
+                "Be poetic yet grounded. End with a brief Taoist reflection. (200-300 words)"
+            )
+
+            ic_interp = ""
+            with st.spinner("The oracle is distilling its wisdom…"):
+                try:
+                    ic_resp = openai.chat.completions.create(
+                        model="gpt-3.5-turbo",
+                        messages=[{"role": "user", "content": ic_prompt}],
+                    )
+                    ic_interp = ic_resp.choices[0].message.content.strip()
+                    for para in ic_interp.split("\n\n"):
+                        if para.strip():
+                            st.markdown(
+                                f'<div class="interp-para">{para.strip()}</div>',
+                                unsafe_allow_html=True,
+                            )
+                except Exception:
+                    ic_interp = ""
+                    st.info("AI interpretation unavailable — the hexagram's wisdom speaks for itself.")
+
+            # Save to journal if logged in
+            if st.session_state.get("user") and ic_interp:
+                database.save_reading(
+                    st.session_state["user"]["db_id"],
+                    "iching",
+                    ic_question,
+                    ic_method,
+                    [f"Hex {hexagram['number']}: {hexagram['english']}"]
+                    + ([f"→ Hex {relating['number']}: {relating['english']}"] if relating else []),
+                    ic_interp,
+                    {"hexagram": hexagram["number"], "changing_lines": changing},
+                )
+            ab_testing.log_conversion(st.session_state, "iching_reading_completed")
+
+            st.markdown(
+                f'<p style="text-align:center;font-style:italic;color:#4a6a7a;'
+                f'font-size:0.95rem;margin-top:24px;">&ldquo;{random.choice(QUOTES)}&rdquo;</p>',
+                unsafe_allow_html=True,
+            )
+
+    # ── I Ching reference grid ────────────────────────────────────────────
+    with st.expander("✦ Browse all 64 Hexagrams"):
+        st.markdown(
+            '<p style="color:#6a8a9a;font-size:0.9rem;margin-bottom:16px;">'
+            'The 64 hexagrams of the I Ching represent all possible states of change. '
+            'Each is a snapshot of the interplay between heaven and earth.</p>',
+            unsafe_allow_html=True,
+        )
+        cols_per_row = 8
+        hex_rows = [ic.HEXAGRAMS[i:i+cols_per_row] for i in range(0, 64, cols_per_row)]
+        for row in hex_rows:
+            row_cols = st.columns(cols_per_row)
+            for col, h in zip(row_cols, row):
+                with col:
+                    mini_svg = ic.hexagram_svg(
+                        list(ic.TRIGRAMS.get(h[3], (True,True,True))) +
+                        list(ic.TRIGRAMS.get(h[4], (True,True,True))),
+                        width=56,
+                    )
+                    st.markdown(
+                        f'<div style="text-align:center;padding:8px 4px;'
+                        f'border:1px solid rgba(126,196,204,0.12);border-radius:6px;margin-bottom:4px;">'
+                        f'<p style="font-family:\'Space Grotesk\',sans-serif;font-size:0.55rem;'
+                        f'color:#4a6a7a;margin:0 0 4px;">{h[0]}</p>'
+                        f'{mini_svg}'
+                        f'<p style="font-size:1rem;color:#7ec4cc;margin:2px 0 0;">{h[1]}</p>'
+                        f'<p style="font-family:\'Space Grotesk\',sans-serif;font-size:0.52rem;'
+                        f'color:#4a6a7a;margin:0;">{h[2][:12]}</p>'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -1051,9 +1328,8 @@ with journal_tab:
             '<p style="font-size:2rem;margin-bottom:16px;">✦</p>'
             '<p style="font-family:\'Cinzel Decorative\',serif;font-size:1rem;color:#c9a96e;">'
             'Your Cosmic Journal</p>'
-            '<p style="color:#6a8a9a;font-size:1rem;margin:12px 0 28px;max-width:420px;margin-left:auto;margin-right:auto;">'
-            'Sign in with Google to save your readings, track your journey, '
-            'and receive personalised AI insights over time.</p>'
+            f'<p style="color:#6a8a9a;font-size:1rem;margin:12px 0 28px;max-width:420px;margin-left:auto;margin-right:auto;">'
+            f'{_copy["journal_prompt"]}</p>'
             '</div>',
             unsafe_allow_html=True,
         )
@@ -1151,6 +1427,137 @@ with journal_tab:
                             f'</div>',
                             unsafe_allow_html=True,
                         )
+
+        # ── Gmail & Social Pattern Analysis ──────────────────────────
+        st.markdown(f'<div style="margin:24px 0 8px">{ornament_svg()}</div>', unsafe_allow_html=True)
+        st.markdown("## Cosmic Pattern Sources")
+        st.markdown(
+            '<p style="color:#6a8a9a;font-size:0.95rem;max-width:640px;margin-bottom:16px;">'
+            'Connect your digital life to receive hyper-personalised tarot insights. '
+            'Your emails and social posts reveal the emotional patterns your cards are reflecting.</p>',
+            unsafe_allow_html=True,
+        )
+
+        _src_col1, _src_col2 = st.columns(2, gap="medium")
+
+        # ── Gmail connector ───────────────────────────────────────────
+        with _src_col1:
+            _user_data = st.session_state.get("user", {})
+            _has_gmail = _user_data.get("gmail_scope", False)
+            _access_token = _user_data.get("access_token", "")
+
+            st.markdown(
+                '<div class="social-card">'
+                '<span class="social-badge gmail">Gmail</span>'
+                '<p style="font-family:\'Cinzel Decorative\',serif;font-size:0.72rem;'
+                'color:#e8dcc8;margin:4px 0 8px;">Email Pattern Reading</p>'
+                '<p style="color:#6a8a9a;font-size:0.88rem;line-height:1.6;margin:0;">'
+                'Analyze the emotional themes in your inbox to deepen your tarot interpretations. '
+                'Only subject lines and brief snippets are read — never full email content.</p>'
+                '</div>',
+                unsafe_allow_html=True,
+            )
+
+            if _has_gmail and _access_token:
+                if st.button("✦ Analyze Gmail Patterns", key="analyze_gmail"):
+                    with st.spinner("Reading the cosmic patterns in your inbox…"):
+                        _emails = gmail_integration.fetch_recent_subjects(_access_token, max_results=20)
+                    if _emails:
+                        _email_summary = gmail_integration.extract_email_themes(_emails)
+                        st.session_state["gmail_patterns"] = _email_summary
+                        st.success(f"Loaded {len(_emails)} email themes. Use 'Gmail-Enhanced Reading' in the Tarot tab.")
+                        with st.expander("Preview detected themes"):
+                            st.markdown(
+                                f'<div class="social-card">'
+                                f'<p style="font-size:0.82rem;color:#8a9aac;line-height:1.6;">{_email_summary}</p>'
+                                f'</div>',
+                                unsafe_allow_html=True,
+                            )
+                    else:
+                        st.info("No recent emails found or Gmail access not granted.")
+            elif auth.is_configured():
+                _gmail_url = auth.get_auth_url(gmail_scope=True)
+                st.markdown(
+                    f'<a class="login-btn" href="{_gmail_url}" target="_self" '
+                    f'style="font-size:0.72rem;padding:9px 18px;">'
+                    '📧 Connect Gmail</a>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown(
+                    '<p style="font-size:0.78rem;color:#4a6a7a;">'
+                    'Configure Google OAuth to enable Gmail integration.</p>',
+                    unsafe_allow_html=True,
+                )
+
+        # ── Social / Manual context ───────────────────────────────────
+        with _src_col2:
+            st.markdown(
+                '<div class="social-card">'
+                '<span class="social-badge facebook">Social & Life Context</span>'
+                '<p style="font-family:\'Cinzel Decorative\',serif;font-size:0.72rem;'
+                'color:#e8dcc8;margin:4px 0 8px;">Share Your Current Chapter</p>'
+                '<p style="color:#6a8a9a;font-size:0.88rem;line-height:1.6;margin:0;">'
+                'Paste recent thoughts, Facebook posts, or a life update. '
+                'The AI will weave your real situation into your next reading.</p>'
+                '</div>',
+                unsafe_allow_html=True,
+            )
+
+            _social_text = st.text_area(
+                "Your recent thoughts or life context",
+                placeholder="What's been on your mind lately? Paste social updates, journal entries, or just write freely…",
+                height=120,
+                label_visibility="collapsed",
+                key="social_context_input",
+            )
+
+            if st.button("✦ Save Context for Next Reading", key="save_social_ctx"):
+                if _social_text and _social_text.strip():
+                    st.session_state["social_patterns"] = _social_text.strip()
+                    st.success("Context saved! Your next tarot or I Ching reading will incorporate these themes.")
+                else:
+                    st.warning("Please add some context first.")
+
+            if st.session_state.get("social_patterns") or st.session_state.get("gmail_patterns"):
+                if st.button("✦ Generate Pattern-Aware Insight", key="gen_pattern_insight"):
+                    _combined = ""
+                    if st.session_state.get("gmail_patterns"):
+                        _combined += f"Email themes:\n{st.session_state['gmail_patterns']}\n\n"
+                    if st.session_state.get("social_patterns"):
+                        _combined += f"Personal context:\n{st.session_state['social_patterns']}"
+
+                    _pattern_prompt = (
+                        "You are a wise mystic counsellor with deep knowledge of tarot and human psychology. "
+                        "Analyze these patterns from someone's life and identify the key spiritual and emotional themes at play:\n\n"
+                        f"{_combined}\n\n"
+                        "Provide:\n"
+                        "1. The dominant life theme or question emerging\n"
+                        "2. The emotional undercurrent (what they may not be seeing clearly)\n"
+                        "3. The tarot archetype(s) that best describe this chapter of their life\n"
+                        "4. One actionable cosmic guidance\n"
+                        "Be warm, specific, and insightful. (200-250 words)"
+                    )
+                    with st.spinner("The patterns are revealing themselves…"):
+                        try:
+                            _pi = openai.chat.completions.create(
+                                model="gpt-3.5-turbo",
+                                messages=[{"role": "user", "content": _pattern_prompt}],
+                            )
+                            _pi_text = _pi.choices[0].message.content.strip()
+                            st.markdown(
+                                f'<div class="insight-card">'
+                                f'<p class="insight-label">✦ Pattern-Aware Cosmic Insight</p>'
+                                f'<p class="insight-text">{_pi_text}</p>'
+                                f'</div>',
+                                unsafe_allow_html=True,
+                            )
+                            if _user_data.get("db_id"):
+                                database.save_insight(_user_data["db_id"], _pi_text, _n)
+                        except Exception:
+                            st.error("Could not generate pattern insight right now.")
+
+        st.markdown(f'<div style="margin:24px 0 8px">{ornament_svg()}</div>', unsafe_allow_html=True)
 
         # ── Reading timeline ─────────────────────────────────────────
         st.markdown("## Reading Timeline")
@@ -1267,8 +1674,14 @@ st.markdown(
     '<p style="text-align:center;font-family:\'Space Grotesk\',sans-serif;font-size:0.7rem;'
     'color:#2d4a5a;letter-spacing:0.12em;text-transform:uppercase;">'
     'Mystical Tarot de Multiverse &nbsp;·&nbsp; ᚠ ᚢ ᚦ ᚨ ᚱ ᚲ &nbsp;·&nbsp; '
-    'Readings for the Soul &nbsp;·&nbsp; '
+    'Tarot · Numerology · I Ching &nbsp;·&nbsp; '
     '<a href="https://twitter.com/cacooleed" target="_blank" style="color:#2d4a5a;">@cacooleed</a>'
     '</p>',
+    unsafe_allow_html=True,
+)
+
+# A/B variant badge (subtle, dev-facing)
+st.markdown(
+    f'<p class="ab-badge">variant {_ab_variant}</p>',
     unsafe_allow_html=True,
 )
