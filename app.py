@@ -5,6 +5,10 @@ from datetime import datetime
 import os
 import hashlib
 import math
+import json
+
+import auth
+import database
 
 st.set_page_config(
     page_title="Mystical Tarot de Multiverse | Free Tarot & Numerology Readings",
@@ -13,6 +17,24 @@ st.set_page_config(
 )
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
+
+# ── DB init + OAuth callback ──────────────────────────────────────────────────
+database.init_db()
+
+_params = st.query_params
+if "code" in _params and "user" not in st.session_state:
+    try:
+        _tokens    = auth.exchange_code(_params["code"])
+        _info      = auth.get_user_info(_tokens["access_token"])
+        _db_id     = database.upsert_user(
+            _info["sub"], _info.get("email", ""),
+            _info.get("name", ""), _info.get("picture", ""),
+        )
+        st.session_state["user"] = {**_info, "db_id": _db_id}
+        st.query_params.clear()
+        st.rerun()
+    except Exception as _e:
+        st.error(f"Google login failed: {_e}")
 
 # ── CSS ──────────────────────────────────────────────────────────────────────
 st.markdown("""
@@ -240,6 +262,67 @@ hr { border: none !important; border-top: 1px solid var(--border) !important; ma
     line-height: 1.75;
     color: var(--parchment);
 }
+
+/* ── Auth / Journal ── */
+.login-btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: linear-gradient(135deg, rgba(201,169,110,0.12), rgba(126,196,204,0.08));
+    border: 1px solid rgba(201,169,110,0.45); color: var(--gold);
+    border-radius: 4px; padding: 11px 22px;
+    font-family: 'Space Grotesk', sans-serif; font-size: 0.8rem;
+    letter-spacing: 0.07em; text-decoration: none; transition: all 0.3s;
+}
+.login-btn:hover { background: rgba(201,169,110,0.2); color: var(--gold-l); }
+
+.user-chip {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(24,45,74,0.7); border: 1px solid var(--border);
+    border-radius: 30px; padding: 6px 14px 6px 6px; width: fit-content;
+}
+.user-chip img { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--border); }
+.user-chip-name { font-family: 'Space Grotesk', sans-serif; font-size: 0.8rem; color: var(--parchment); }
+
+.j-entry {
+    background: linear-gradient(135deg, rgba(18,32,58,0.9), rgba(24,45,74,0.8));
+    border: 1px solid rgba(201,169,110,0.18); border-radius: 10px;
+    padding: 18px 20px; margin-bottom: 14px; position: relative;
+    transition: border-color 0.25s;
+}
+.j-entry:hover { border-color: rgba(201,169,110,0.38); }
+.j-entry::before {
+    content: ''; position: absolute; left: -1px; top: 0; bottom: 0;
+    width: 3px; border-radius: 3px 0 0 3px;
+}
+.j-entry.tarot::before  { background: linear-gradient(180deg, #b89ec4, #7ec4cc); }
+.j-entry.numerology::before { background: linear-gradient(180deg, #c9a96e, #8aaa7c); }
+.j-meta { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
+.j-type { font-family: 'Space Grotesk', sans-serif; font-size: 0.65rem; letter-spacing: 0.1em;
+    text-transform: uppercase; padding: 3px 9px; border-radius: 20px; }
+.j-type.tarot { background: rgba(184,158,196,0.15); color: var(--lavender); border: 1px solid rgba(184,158,196,0.3); }
+.j-type.numerology { background: rgba(201,169,110,0.12); color: var(--gold); border: 1px solid rgba(201,169,110,0.25); }
+.j-date { font-family: 'Space Grotesk', sans-serif; font-size: 0.7rem; color: var(--muted); }
+.j-question { font-family: 'Crimson Pro', serif; font-size: 1.05rem; font-style: italic;
+    color: var(--parchment); margin: 0 0 6px; }
+.j-cards { font-family: 'Space Grotesk', sans-serif; font-size: 0.72rem; color: var(--muted); margin: 0; }
+.j-snippet { font-family: 'Crimson Pro', serif; font-size: 0.9rem; color: #7a8a9a;
+    margin: 8px 0 0; line-height: 1.55;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+.insight-card {
+    background: linear-gradient(135deg, rgba(30,20,55,0.95), rgba(18,32,58,0.9));
+    border: 1px solid rgba(184,158,196,0.35); border-radius: 12px;
+    padding: 24px 26px; position: relative; overflow: hidden; margin-bottom: 20px;
+}
+.insight-card::after {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--lavender), transparent);
+}
+.insight-label { font-family: 'Space Grotesk', sans-serif; font-size: 0.68rem;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--lavender); margin: 0 0 10px; }
+.insight-text { font-family: 'Crimson Pro', serif; font-size: 1.05rem; line-height: 1.8;
+    color: var(--parchment); margin: 0; white-space: pre-wrap; }
+.insight-meta { font-family: 'Space Grotesk', sans-serif; font-size: 0.68rem;
+    color: var(--muted); margin-top: 14px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -637,6 +720,43 @@ st.markdown(
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 
+# ── Sidebar: auth state ──────────────────────────────────────────────────────
+_user = st.session_state.get("user")
+if _user:
+    _pic = _user.get("picture", "")
+    _name = _user.get("name", "You")
+    _img_tag = f'<img src="{_pic}" referrerpolicy="no-referrer"/>' if _pic else ""
+    st.sidebar.markdown(
+        f'<div class="user-chip">{_img_tag}'
+        f'<span class="user-chip-name">{_name}</span></div>',
+        unsafe_allow_html=True,
+    )
+    if st.sidebar.button("Sign out", key="signout"):
+        del st.session_state["user"]
+        st.rerun()
+else:
+    if auth.is_configured():
+        _auth_url = auth.get_auth_url()
+        st.sidebar.markdown(
+            f'<a class="login-btn" href="{_auth_url}" target="_self">'
+            '<svg width="18" height="18" viewBox="0 0 48 48">'
+            '<path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>'
+            '<path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>'
+            '<path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>'
+            '<path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>'
+            '</svg>'
+            'Sign in with Google</a>',
+            unsafe_allow_html=True,
+        )
+    else:
+        st.sidebar.markdown(
+            '<p style="font-size:0.8rem;color:#4a6a7a;line-height:1.6;">'
+            'Set <code>GOOGLE_CLIENT_ID</code> and <code>GOOGLE_CLIENT_SECRET</code> '
+            'env vars to enable journal features.</p>',
+            unsafe_allow_html=True,
+        )
+
+st.sidebar.markdown("---")
 st.sidebar.markdown("## Support the Creator")
 st.sidebar.markdown(
     '<p style="font-size:0.95rem;line-height:1.7;color:#b0b8c8;">'
@@ -668,7 +788,9 @@ st.sidebar.markdown(
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
 
-tarot_tab, numerology_tab, wisdom_tab = st.tabs(["✦ Tarot Reading", "✦ Numerology", "✦ Ancient Wisdom"])
+tarot_tab, numerology_tab, journal_tab, wisdom_tab = st.tabs([
+    "✦ Tarot Reading", "✦ Numerology", "✦ My Journal", "✦ Ancient Wisdom"
+])
 
 # ════════════════════════════════════════════════════════════════════════════
 # TAROT TAB
@@ -743,6 +865,7 @@ with tarot_tab:
             )
             st.markdown(f'<div style="margin:28px 0 8px">{ornament_svg()}</div>', unsafe_allow_html=True)
             st.markdown("## Cosmic Interpretation")
+            interpretation = ""
             with st.spinner("The cosmic energies are aligning…"):
                 try:
                     resp = openai.chat.completions.create(
@@ -757,7 +880,15 @@ with tarot_tab:
                                 unsafe_allow_html=True,
                             )
                 except Exception:
+                    interpretation = ""
                     st.info("AI interpretation is unavailable right now — your cards carry all the wisdom you need.")
+
+            # Save to journal if logged in
+            if st.session_state.get("user") and interpretation:
+                database.save_reading(
+                    st.session_state["user"]["db_id"],
+                    "tarot", question, spread_type, spread, interpretation,
+                )
 
             st.markdown(
                 f'<p style="text-align:center;font-style:italic;color:#4a6a7a;'
@@ -871,14 +1002,15 @@ with numerology_tab:
                 "Be warm, insightful, specific. End with an encouraging note and a numerology pun."
             )
 
+            num_interp = ""
             with st.spinner("The numbers are aligning in the cosmic grid…"):
                 try:
                     num_resp = openai.chat.completions.create(
                         model="gpt-3.5-turbo",
                         messages=[{"role": "user", "content": numerology_prompt}],
                     )
-                    interp = num_resp.choices[0].message.content.strip()
-                    for para in interp.split("\n\n"):
+                    num_interp = num_resp.choices[0].message.content.strip()
+                    for para in num_interp.split("\n\n"):
                         if para.strip():
                             st.markdown(
                                 f'<div class="interp-para">{para.strip()}</div>',
@@ -887,8 +1019,175 @@ with numerology_tab:
                 except Exception:
                     st.info("AI interpretation is unavailable right now. Your numbers carry all the wisdom needed.")
 
+            # Save to journal if logged in
+            if st.session_state.get("user") and num_interp:
+                _num_meta = {}
+                if birth_date:
+                    _num_meta["life_path"] = life_path
+                if full_name and full_name.strip():
+                    _num_meta.update({"expression": expression, "soul_urge": soul_urge, "personality": personality})
+                database.save_reading(
+                    st.session_state["user"]["db_id"],
+                    "numerology",
+                    (full_name.strip() if full_name and full_name.strip() else "") +
+                    (f" · {birth_date.strftime('%d %b %Y')}" if birth_date else ""),
+                    "",
+                    [],
+                    num_interp,
+                    _num_meta,
+                )
+
             st.info("Found this reading helpful? Slip to the sidebar — molly awaits. 🥰")
 
+
+# ════════════════════════════════════════════════════════════════════════════
+# JOURNAL TAB
+# ════════════════════════════════════════════════════════════════════════════
+with journal_tab:
+    _user = st.session_state.get("user")
+    if not _user:
+        st.markdown(
+            '<div style="text-align:center;padding:60px 20px;">'
+            '<p style="font-size:2rem;margin-bottom:16px;">✦</p>'
+            '<p style="font-family:\'Cinzel Decorative\',serif;font-size:1rem;color:#c9a96e;">'
+            'Your Cosmic Journal</p>'
+            '<p style="color:#6a8a9a;font-size:1rem;margin:12px 0 28px;max-width:420px;margin-left:auto;margin-right:auto;">'
+            'Sign in with Google to save your readings, track your journey, '
+            'and receive personalised AI insights over time.</p>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+        if auth.is_configured():
+            _col_c, _col_b, _col_r = st.columns([2, 1, 2])
+            with _col_b:
+                st.markdown(
+                    f'<a class="login-btn" href="{auth.get_auth_url()}" target="_self">'
+                    '<svg width="18" height="18" viewBox="0 0 48 48">'
+                    '<path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>'
+                    '<path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>'
+                    '<path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>'
+                    '<path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>'
+                    '</svg>Sign in with Google</a>',
+                    unsafe_allow_html=True,
+                )
+    else:
+        _uid = _user["db_id"]
+        _readings = database.get_readings(_uid)
+        _n = len(_readings)
+
+        # ── Header row ──────────────────────────────────────────────
+        _jh1, _jh2 = st.columns([3, 2], gap="large")
+        with _jh1:
+            st.markdown("## Your Cosmic Journal")
+            st.markdown(
+                f'<p style="color:#6a8a9a;font-size:0.9rem;">'
+                f'{_n} reading{"s" if _n != 1 else ""} saved to your chronicle.</p>',
+                unsafe_allow_html=True,
+            )
+        with _jh2:
+            _insights = database.get_insights(_uid)
+            _last_insight_readings = _insights[0]["reading_count"] if _insights else 0
+            _new_since = _n - _last_insight_readings
+            _btn_label = (
+                f"Generate Insights ({_new_since} new)" if _new_since >= 3
+                else "Generate Insights"
+            )
+            _can_gen = _n >= 3
+            if st.button(_btn_label, disabled=not _can_gen, key="gen_insight"):
+                _sample = _readings[:20]
+                _summary_lines = []
+                for _r in _sample:
+                    _q = _r["question"] or "(numerology reading)"
+                    _c = ", ".join(_r["cards"][:3]) if _r["cards"] else ""
+                    _date = _r["created_at"][:10]
+                    _summary_lines.append(f"[{_date}] {_r['type'].title()}: {_q}" + (f" | Cards: {_c}" if _c else ""))
+                _insight_prompt = (
+                    "You are a wise mystic counsellor with deep knowledge of tarot and numerology. "
+                    "Below is a chronological log of a person's readings:\n\n"
+                    + "\n".join(_summary_lines)
+                    + "\n\nAnalyse the patterns, recurring themes, emotional undercurrents, and the "
+                    "arc of their questions over time. What does this reveal about their inner journey, "
+                    "growth areas, and subconscious preoccupations? Offer 3–4 concrete, compassionate "
+                    "insights that illuminate their decision-making patterns and suggest a path forward. "
+                    "Be warm, poetic yet specific. Keep it under 400 words."
+                )
+                with st.spinner("The oracle is weaving your patterns into light…"):
+                    try:
+                        _ir = openai.chat.completions.create(
+                            model="gpt-3.5-turbo",
+                            messages=[{"role": "user", "content": _insight_prompt}],
+                        )
+                        _itext = _ir.choices[0].message.content.strip()
+                        database.save_insight(_uid, _itext, _n)
+                        st.rerun()
+                    except Exception:
+                        st.error("Could not generate insights right now. Try again later.")
+            if not _can_gen:
+                st.caption("Complete 3+ readings to unlock insights.")
+
+        st.markdown(f'<div style="margin:16px 0 24px">{ornament_svg()}</div>', unsafe_allow_html=True)
+
+        # ── Latest insight ───────────────────────────────────────────
+        _insights = database.get_insights(_uid)
+        if _insights:
+            _latest = _insights[0]
+            st.markdown(
+                f'<div class="insight-card">'
+                f'<p class="insight-label">✦ Your Latest Oracle Insight</p>'
+                f'<p class="insight-text">{_latest["insight_text"]}</p>'
+                f'<p class="insight-meta">Based on {_latest["reading_count"]} readings &nbsp;·&nbsp; '
+                f'{_latest["generated_at"][:10]}</p>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+            if len(_insights) > 1:
+                with st.expander(f"View {len(_insights)-1} older insight(s)"):
+                    for _oi in _insights[1:]:
+                        st.markdown(
+                            f'<div class="insight-card" style="margin-bottom:12px;">'
+                            f'<p class="insight-label">Insight · {_oi["generated_at"][:10]}</p>'
+                            f'<p class="insight-text">{_oi["insight_text"]}</p>'
+                            f'<p class="insight-meta">Based on {_oi["reading_count"]} readings</p>'
+                            f'</div>',
+                            unsafe_allow_html=True,
+                        )
+
+        # ── Reading timeline ─────────────────────────────────────────
+        st.markdown("## Reading Timeline")
+        if not _readings:
+            st.markdown(
+                '<div style="text-align:center;padding:40px 0;color:#4a6a7a;">'
+                '<p style="font-size:1.05rem;">No readings yet — complete a Tarot or Numerology reading to begin your chronicle.</p>'
+                '</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            for _r in _readings:
+                _type_cls = _r["type"]
+                _q = _r["question"] or "(numerology reading)"
+                _date_fmt = _r["created_at"][:16].replace("T", " ")
+                _cards_str = " · ".join(_r["cards"][:5]) if _r["cards"] else ""
+                _snippet = (_r["interpretation"] or "")[:200].strip()
+                _meta = _r.get("metadata", {})
+                _num_badge = ""
+                if _type_cls == "numerology" and _meta:
+                    _lp = _meta.get("life_path")
+                    if _lp:
+                        _num_badge = f' &nbsp;<span style="color:#8aaa7c;">LP {_lp}</span>'
+
+                st.markdown(
+                    f'<div class="j-entry {_type_cls}">'
+                    f'<div class="j-meta">'
+                    f'<span class="j-type {_type_cls}">{_type_cls}</span>'
+                    f'<span class="j-date">{_date_fmt}</span>'
+                    f'{_num_badge}'
+                    f'</div>'
+                    f'<p class="j-question">&ldquo;{_q}&rdquo;</p>'
+                    + (f'<p class="j-cards">{_cards_str}</p>' if _cards_str else "")
+                    + (f'<p class="j-snippet">{_snippet}…</p>' if _snippet else "")
+                    + f'</div>',
+                    unsafe_allow_html=True,
+                )
 
 # ════════════════════════════════════════════════════════════════════════════
 # WISDOM TAB
