@@ -946,9 +946,9 @@ with tarot_tab:
                                 f'<div class="interp-para">{para.strip()}</div>',
                                 unsafe_allow_html=True,
                             )
-                except Exception:
+                except Exception as e:
                     interpretation = ""
-                    st.info("AI interpretation is unavailable right now — your cards carry all the wisdom you need.")
+                    st.error(f"AI error: {e}")
 
             # Save to journal if logged in
             if st.session_state.get("user") and interpretation:
