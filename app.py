@@ -21,7 +21,7 @@ st.set_page_config(
     layout="wide"
 )
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+openai.api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
 
 # ── DB init + A/B tables + OAuth callback ────────────────────────────────────
 database.init_db()
