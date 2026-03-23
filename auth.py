@@ -3,9 +3,16 @@ import os
 from urllib.parse import urlencode
 import requests
 
-GOOGLE_CLIENT_ID     = os.getenv("GOOGLE_CLIENT_ID", "")
-GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
-REDIRECT_URI         = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8501")
+def _secret(key: str, default: str = "") -> str:
+    try:
+        import streamlit as st
+        return st.secrets.get(key, os.getenv(key, default))
+    except Exception:
+        return os.getenv(key, default)
+
+GOOGLE_CLIENT_ID     = _secret("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = _secret("GOOGLE_CLIENT_SECRET")
+REDIRECT_URI         = _secret("GOOGLE_REDIRECT_URI", "http://localhost:8501")
 
 _AUTH_URL     = "https://accounts.google.com/o/oauth2/v2/auth"
 _TOKEN_URL    = "https://oauth2.googleapis.com/token"
