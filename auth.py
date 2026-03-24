@@ -36,11 +36,8 @@ def get_auth_url(gmail_scope: bool = False) -> str:
         "response_type": "code",
         "scope":         scope,
         "access_type":   "offline",
-        "prompt":        "select_account",
+        "prompt":        "consent",
     }
-    if gmail_scope:
-        # Force re-consent to get Gmail scope
-        params["prompt"] = "consent"
     return f"{_AUTH_URL}?{urlencode(params)}"
 
 

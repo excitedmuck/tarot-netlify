@@ -818,7 +818,7 @@ else:
     if auth.is_configured():
         _auth_url = auth.get_auth_url()
         st.sidebar.markdown(
-            f'<a class="login-btn" href="{_auth_url}" target="_self">'
+            f'<a class="login-btn" href="{_auth_url}" target="_top">'
             '<svg width="18" height="18" viewBox="0 0 48 48">'
             '<path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>'
             '<path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>'
@@ -1350,7 +1350,7 @@ with journal_tab:
             _col_c, _col_b, _col_r = st.columns([2, 1, 2])
             with _col_b:
                 st.markdown(
-                    f'<a class="login-btn" href="{auth.get_auth_url()}" target="_self">'
+                    f'<a class="login-btn" href="{auth.get_auth_url()}" target="_top">'
                     '<svg width="18" height="18" viewBox="0 0 48 48">'
                     '<path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>'
                     '<path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>'
@@ -1491,7 +1491,7 @@ with journal_tab:
             elif auth.is_configured():
                 _gmail_url = auth.get_auth_url(gmail_scope=True)
                 st.markdown(
-                    f'<a class="login-btn" href="{_gmail_url}" target="_self" '
+                    f'<a class="login-btn" href="{_gmail_url}" target="_top" '
                     f'style="font-size:0.72rem;padding:9px 18px;">'
                     '📧 Connect Gmail</a>',
                     unsafe_allow_html=True,
