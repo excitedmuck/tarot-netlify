@@ -10,7 +10,7 @@ from urllib.parse import urlencode
 # Facebook OAuth config (optional — requires FB App)
 FB_APP_ID     = os.getenv("FACEBOOK_APP_ID", "")
 FB_APP_SECRET = os.getenv("FACEBOOK_APP_SECRET", "")
-FB_REDIRECT_URI = os.getenv("FACEBOOK_REDIRECT_URI", "http://localhost:8501")
+FB_REDIRECT_URI = os.getenv("FACEBOOK_REDIRECT_URI", "https://numerologytarot.streamlit.app")
 
 FB_AUTH_URL  = "https://www.facebook.com/v19.0/dialog/oauth"
 FB_TOKEN_URL = "https://graph.facebook.com/v19.0/oauth/access_token"

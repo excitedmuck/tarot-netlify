@@ -12,7 +12,7 @@ def _secret(key: str, default: str = "") -> str:
 
 def _client_id():     return _secret("GOOGLE_CLIENT_ID")
 def _client_secret(): return _secret("GOOGLE_CLIENT_SECRET")
-def _redirect_uri():  return _secret("GOOGLE_REDIRECT_URI", "http://localhost:8501")
+def _redirect_uri():  return _secret("GOOGLE_REDIRECT_URI", "https://numerologytarot.streamlit.app")
 
 _AUTH_URL     = "https://accounts.google.com/o/oauth2/v2/auth"
 _TOKEN_URL    = "https://oauth2.googleapis.com/token"
