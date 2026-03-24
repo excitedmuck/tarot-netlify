@@ -34,24 +34,37 @@ _copy = SEO.AB_VARIANTS[_ab_variant]
 ab_testing.log_impression(st.session_state)
 
 # ── OAuth callback ────────────────────────────────────────────────────────────
-if "code" in _params and "user" not in st.session_state:
+# Handle Google error redirect (e.g. redirect_uri_mismatch)
+if "error" in _params:
+    st.error(f"Google login error: {_params['error']}")
+
+# Step 1: Capture code immediately and clear the URL to prevent double-exchange.
+# Streamlit reruns the script multiple times on load; the auth code is single-use,
+# so we stash it in session_state and redirect to a clean URL first.
+if "code" in _params and "oauth_code" not in st.session_state and "user" not in st.session_state:
+    st.session_state["oauth_code"] = _params["code"]
+    st.query_params.clear()
+    st.rerun()
+
+# Step 2: Exchange the stashed code on the clean rerun (no ?code= in URL).
+if "oauth_code" in st.session_state and "user" not in st.session_state:
     try:
-        _tokens    = auth.exchange_code(_params["code"])
+        _code      = st.session_state.pop("oauth_code")
+        _tokens    = auth.exchange_code(_code)
         _info      = auth.get_user_info(_tokens["access_token"])
         _db_id     = database.upsert_user(
             _info["sub"], _info.get("email", ""),
             _info.get("name", ""), _info.get("picture", ""),
         )
-        _tokens_copy = _tokens.copy()
         st.session_state["user"] = {
             **_info,
             "db_id": _db_id,
-            "access_token": _tokens_copy.get("access_token", ""),
-            "gmail_scope": "gmail" in _tokens_copy.get("scope", ""),
+            "access_token": _tokens.get("access_token", ""),
+            "gmail_scope": "gmail" in _tokens.get("scope", ""),
         }
-        st.query_params.clear()
         st.rerun()
     except Exception as _e:
+        st.session_state.pop("oauth_code", None)
         st.error(f"Google login failed: {_e}")
 
 # ── CSS ──────────────────────────────────────────────────────────────────────
