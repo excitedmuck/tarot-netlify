@@ -10,9 +10,9 @@ def _secret(key: str, default: str = "") -> str:
     except Exception:
         return os.getenv(key, default)
 
-GOOGLE_CLIENT_ID     = _secret("GOOGLE_CLIENT_ID")
-GOOGLE_CLIENT_SECRET = _secret("GOOGLE_CLIENT_SECRET")
-REDIRECT_URI         = _secret("GOOGLE_REDIRECT_URI", "http://localhost:8501")
+def _client_id():     return _secret("GOOGLE_CLIENT_ID")
+def _client_secret(): return _secret("GOOGLE_CLIENT_SECRET")
+def _redirect_uri():  return _secret("GOOGLE_REDIRECT_URI", "http://localhost:8501")
 
 _AUTH_URL     = "https://accounts.google.com/o/oauth2/v2/auth"
 _TOKEN_URL    = "https://oauth2.googleapis.com/token"
@@ -25,14 +25,14 @@ _GMAIL_SCOPES = "openid email profile https://www.googleapis.com/auth/gmail.read
 
 
 def is_configured() -> bool:
-    return bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET)
+    return bool(_client_id() and _client_secret())
 
 
 def get_auth_url(gmail_scope: bool = False) -> str:
     scope = _GMAIL_SCOPES if gmail_scope else _BASE_SCOPES
     params = {
-        "client_id":     GOOGLE_CLIENT_ID,
-        "redirect_uri":  REDIRECT_URI,
+        "client_id":     _client_id(),
+        "redirect_uri":  _redirect_uri(),
         "response_type": "code",
         "scope":         scope,
         "access_type":   "offline",
@@ -46,11 +46,11 @@ def get_auth_url(gmail_scope: bool = False) -> str:
 
 def exchange_code(code: str) -> dict:
     resp = requests.post(_TOKEN_URL, data={
-        "client_id":     GOOGLE_CLIENT_ID,
-        "client_secret": GOOGLE_CLIENT_SECRET,
+        "client_id":     _client_id(),
+        "client_secret": _client_secret(),
         "code":          code,
         "grant_type":    "authorization_code",
-        "redirect_uri":  REDIRECT_URI,
+        "redirect_uri":  _redirect_uri(),
     }, timeout=10)
     resp.raise_for_status()
     return resp.json()
