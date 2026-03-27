@@ -65,10 +65,18 @@ if "oauth_code" in st.session_state and "user" not in st.session_state:
             "access_token": _tokens.get("access_token", ""),
             "gmail_scope": "gmail" in _tokens.get("scope", ""),
         }
+        st.session_state["just_logged_in"] = True
         st.rerun()
     except Exception as _e:
         st.session_state.pop("oauth_code", None)
         st.error(f"Google login failed: {_e}")
+
+# ── Close OAuth tab after login ──────────────────────────────────────────────
+if st.session_state.pop("just_logged_in", False):
+    st.markdown(
+        "<script>window.opener && window.opener.location.reload(); window.close();</script>",
+        unsafe_allow_html=True,
+    )
 
 # ── CSS ──────────────────────────────────────────────────────────────────────
 st.markdown("""
