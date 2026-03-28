@@ -73,9 +73,10 @@ if "oauth_code" in st.session_state and "user" not in st.session_state:
 
 # ── Close OAuth tab after login ──────────────────────────────────────────────
 if st.session_state.pop("just_logged_in", False):
-    st.markdown(
+    import streamlit.components.v1 as _components
+    _components.html(
         "<script>window.opener && window.opener.location.reload(); window.close();</script>",
-        unsafe_allow_html=True,
+        height=0,
     )
 
 # ── CSS ──────────────────────────────────────────────────────────────────────
