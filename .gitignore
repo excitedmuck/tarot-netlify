@@ -1,1 +1,5 @@
 **/secrets.toml
+__pycache__/
+*.pyc
+*.pyo
+readings.db

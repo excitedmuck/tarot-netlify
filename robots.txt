@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /readings.db
+Disallow: /.streamlit/
+Disallow: /secrets.toml
+
+Sitemap: https://mystical-tarot.netlify.app/sitemap.xml
